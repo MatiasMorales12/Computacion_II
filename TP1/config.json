@@ -1,0 +1,11 @@
+{
+    "refresh_interval": 0.5,
+    "limite_resumen": 20,
+    "limite_memoria": 20,
+    "limite_fds_procesos": 10,
+    "limite_fds": 5,
+    "limite_threads_procesos": 10,
+    "limite_threads": 5,
+    "limite_senales": 20,
+    "limite_scheduling": 20
+}

@@ -1,0 +1,10 @@
+services:
+  monitor:
+    build: .
+    container_name: tp1_monitor_procesos
+    tty: true
+    stdin_open: true
+    pid: "host"
+    privileged: true
+    volumes:
+      - .:/app
