@@ -216,6 +216,7 @@ def resumen_proceso(pid):
         "rss_kb": obtener_rss_kb(status),
         "nice": stat.get("nice"),
         "priority": stat.get("priority"),
+        "cpu_ticks": int(stat.get("utime", 0)) + int(stat.get("stime", 0)),
         "comando": comando,
     }
 
@@ -237,6 +238,8 @@ def listar_resumenes(limite=None):
         if limite is not None and len(procesos) >= limite:
             break
 
+    procesos.sort(key=lambda proc: int(proc.get("vmrss_kb", 0)), reverse=True)
+
     return procesos
 
 
@@ -257,6 +260,75 @@ def obtener_valor_kb(status, clave):
         return 0
 
 
+
+def memoria_maps_proceso(pid):
+    """
+    Lee /proc/<pid>/maps y estima memoria por tipo de segmento.
+
+    Categorias calculadas:
+    - text: regiones ejecutables
+    - data: regiones privadas de datos/escritura
+    - heap: region [heap]
+    - stack: regiones [stack]
+    - shared: regiones compartidas
+    """
+    segmentos = {
+        "map_text_kb": 0,
+        "map_data_kb": 0,
+        "map_heap_kb": 0,
+        "map_stack_kb": 0,
+        "map_shared_kb": 0,
+        "map_total_kb": 0,
+    }
+
+    ruta = f"/proc/{pid}/maps"
+
+    try:
+        with open(ruta, "r", encoding="utf-8", errors="replace") as archivo:
+            lineas = archivo.readlines()
+    except (FileNotFoundError, ProcessLookupError, PermissionError, OSError):
+        return segmentos
+
+    for linea in lineas:
+        partes = linea.split()
+
+        if len(partes) < 2:
+            continue
+
+        rango = partes[0]
+        permisos = partes[1]
+        nombre = partes[5] if len(partes) >= 6 else ""
+
+        try:
+            inicio_txt, fin_txt = rango.split("-", 1)
+            inicio = int(inicio_txt, 16)
+            fin = int(fin_txt, 16)
+        except ValueError:
+            continue
+
+        tamanio_kb = max(0, (fin - inicio) // 1024)
+        segmentos["map_total_kb"] += tamanio_kb
+
+        es_heap = nombre == "[heap]"
+        es_stack = nombre.startswith("[stack")
+        es_shared = len(permisos) >= 4 and permisos[3] == "s"
+        es_text = "x" in permisos
+        es_data = "w" in permisos and "p" in permisos and not es_heap and not es_stack and "x" not in permisos
+
+        if es_heap:
+            segmentos["map_heap_kb"] += tamanio_kb
+        elif es_stack:
+            segmentos["map_stack_kb"] += tamanio_kb
+        elif es_text:
+            segmentos["map_text_kb"] += tamanio_kb
+        elif es_data:
+            segmentos["map_data_kb"] += tamanio_kb
+
+        if es_shared:
+            segmentos["map_shared_kb"] += tamanio_kb
+
+    return segmentos
+
 def memoria_proceso(pid):
     """
     Obtiene informacion de memoria de un proceso leyendo /proc/<pid>/status.
@@ -265,6 +337,8 @@ def memoria_proceso(pid):
 
     if not status:
         return None
+
+    maps = memoria_maps_proceso(pid)
 
     return {
         "pid": pid,
@@ -277,12 +351,18 @@ def memoria_proceso(pid):
         "vmlib_kb": obtener_valor_kb(status, "VmLib"),
         "vmhwm_kb": obtener_valor_kb(status, "VmHWM"),
         "vmswap_kb": obtener_valor_kb(status, "VmSwap"),
+        "maps": maps,
+        **maps,
     }
 
 
 def listar_memoria(limite=None):
     """
     Devuelve una lista con informacion de memoria de varios procesos.
+
+    Primero lee todos los procesos disponibles, luego ordena por memoria
+    residente y finalmente aplica el limite visual. Asi se evitan listas
+    llenas de procesos kernel con memoria 0.
     """
     procesos = []
 
@@ -292,10 +372,13 @@ def listar_memoria(limite=None):
         if info is not None:
             procesos.append(info)
 
-        if limite is not None and len(procesos) >= limite:
-            break
+    procesos.sort(key=lambda proc: int(proc.get("vmrss_kb", 0)), reverse=True)
+
+    if limite is not None:
+        procesos = procesos[:limite]
 
     return procesos
+
 
 def clasificar_fd(destino):
     """

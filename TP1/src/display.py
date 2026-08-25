@@ -56,8 +56,8 @@ def mostrar_vista_resumen(snapshot):
 
     print("=== VISTA 1: RESUMEN DE PROCESOS ===")
     print()
-    print("PID     PPID    USER        EST  THR   RSS(KB)   COMANDO")
-    print("-" * 95)
+    print("PID     PPID    USER        EST  THR   CPU%    RSS(KB)   COMANDO")
+    print("-" * 105)
 
     for proc in resumen[:20]:
         print(
@@ -66,6 +66,7 @@ def mostrar_vista_resumen(snapshot):
             f"{proc['usuario']:<10} "
             f"{proc['estado']:<4} "
             f"{proc['threads']:<5} "
+            f"{float(proc.get('cpu_pct', 0.0)):<7.2f} "
             f"{proc['rss_kb']:<9} "
             f"{proc['comando'][:45]}"
         )
@@ -79,18 +80,20 @@ def mostrar_vista_memoria(snapshot):
 
     print("=== VISTA 2: MEMORIA ===")
     print()
-    print("PID     NOMBRE              VmSize(KB)  VmRSS(KB)   VmData(KB)  VmHWM(KB)   VmSwap(KB)")
-    print("-" * 105)
+    print("PID     NOMBRE              VmRSS(KB)  TEXT     DATA     HEAP     STACK    SHARED   COMANDO/MAPS")
+    print("-" * 115)
 
     for proc in memoria[:20]:
         print(
             f"{proc['pid']:<7} "
             f"{proc['nombre']:<18} "
-            f"{proc['vmsize_kb']:<11} "
-            f"{proc['vmrss_kb']:<11} "
-            f"{proc['vmdata_kb']:<11} "
-            f"{proc['vmhwm_kb']:<10} "
-            f"{proc['vmswap_kb']:<10}"
+            f"{proc['vmrss_kb']:<10} "
+            f"{proc.get('map_text_kb', 0):<8} "
+            f"{proc.get('map_data_kb', 0):<8} "
+            f"{proc.get('map_heap_kb', 0):<8} "
+            f"{proc.get('map_stack_kb', 0):<8} "
+            f"{proc.get('map_shared_kb', 0):<8} "
+            f"total_maps={proc.get('map_total_kb', 0)} KB"
         )
 
 
@@ -231,11 +234,12 @@ def mostrar_vista_sistema(snapshot):
     uptime = sistema.get("uptime", {})
     procesos = sistema.get("procesos", {})
 
-    print("CPU acumulada:")
-    print(f"  User:   {cpu.get('user_pct', 0)} %")
-    print(f"  System: {cpu.get('system_pct', 0)} %")
-    print(f"  Idle:   {cpu.get('idle_pct', 0)} %")
-    print(f"  IOWait: {cpu.get('iowait_pct', 0)} %")
+    print("CPU global por delta (/proc/stat):")
+    print(f"  Uso:    {float(cpu.get('uso_pct', 0)):.2f} %")
+    print(f"  User:   {float(cpu.get('user_pct', 0)):.2f} %")
+    print(f"  System: {float(cpu.get('system_pct', 0)):.2f} %")
+    print(f"  Idle:   {float(cpu.get('idle_pct', 0)):.2f} %")
+    print(f"  IOWait: {float(cpu.get('iowait_pct', 0)):.2f} %")
     print()
 
     print("Load average:")
