@@ -18,8 +18,75 @@ from display import mostrar_display
 from senales import configurar_manejadores_senales, procesar_acciones_senales
 from configuracion import cargar_configuracion
 
+ANALIZADOR_POR_VISTA = {
+    "1": "resumen",
+    "2": "memoria",
+    "3": "fds",
+    "4": "threads",
+    "5": "senales",
+    "6": "scheduling",
+    "7": "sistema",
+}
 
-def iniciar_procesos(snapshot, lock, stop_event, config):
+NOMBRE_VISTA = {
+    "1": "Resumen",
+    "2": "Memoria",
+    "3": "FDs",
+    "4": "Threads",
+    "5": "Señales",
+    "6": "Scheduling",
+    "7": "Sistema",
+}
+
+
+def crear_intervalos_compartidos(config):
+    """
+    Crea un multiprocessing.Value por analizador.
+
+    Cada Value guarda el intervalo de refresco propio de ese analizador.
+    Esto permite modificarlo en caliente desde la TUI con + y -.
+    """
+    base = float(config.get("refresh_interval", 2.0))
+
+    return {
+        "resumen": mp.Value("d", base),
+        "memoria": mp.Value("d", base),
+        "fds": mp.Value("d", base),
+        "threads": mp.Value("d", base),
+        "senales": mp.Value("d", base),
+        "scheduling": mp.Value("d", base),
+        "sistema": mp.Value("d", base),
+    }
+
+
+def obtener_intervalo_vista(intervalos, vista_actual):
+    """
+    Devuelve el intervalo actual asociado a la vista seleccionada.
+    """
+    clave = ANALIZADOR_POR_VISTA.get(vista_actual, "resumen")
+    intervalo = intervalos[clave]
+
+    with intervalo.get_lock():
+        return float(intervalo.value)
+
+
+def ajustar_intervalo_vista(intervalos, vista_actual, delta):
+    """
+    Ajusta en caliente el intervalo del analizador de la vista activa.
+
+    Se limita el mínimo a 0.2 segundos para evitar refrescos excesivos.
+    """
+    clave = ANALIZADOR_POR_VISTA.get(vista_actual, "resumen")
+    intervalo = intervalos[clave]
+
+    with intervalo.get_lock():
+        nuevo = max(0.2, round(float(intervalo.value) + delta, 2))
+        intervalo.value = nuevo
+
+    return clave, nuevo
+
+
+def iniciar_procesos(snapshot, lock, stop_event, config, intervalos):
     """
     Crea e inicia los procesos analizadores.
 
@@ -116,12 +183,14 @@ def mostrar_estado_senales(control):
         print(f"Mensaje: {mensaje}")
 
     print(f"Verbose: {verbose}")
+    print(f"Analizador activo: {control.get('analizador_actual', '-')}")
+    print(f"Intervalo activo: {control.get('intervalo_actual', '-')} s")
     print()
     print("Teclas: 1-7 cambiar vista | q salir")
     print("Señales: SIGINT/SIGTERM salir | SIGHUP recargar | SIGUSR1 dump | SIGUSR2 verbose | SIGWINCH repintar")
 
 
-def ejecutar_monitor(snapshot, lock, stop_event, control, config):
+def ejecutar_monitor(snapshot, lock, stop_event, control, config, intervalos):
     """
     Loop principal del monitor.
 
@@ -190,7 +259,9 @@ def main():
             "repintar": False,
         }
 
-        procesos = iniciar_procesos(snapshot, lock, stop_event, config)
+        intervalos = crear_intervalos_compartidos(config)
+
+        procesos = iniciar_procesos(snapshot, lock, stop_event, config, intervalos)
 
         # Configuramos señales solo en el proceso principal.
         configurar_manejadores_senales(stop_event, control)
@@ -199,7 +270,7 @@ def main():
         time.sleep(2)
 
         try:
-            ejecutar_monitor(snapshot, lock, stop_event, control, config)
+            ejecutar_monitor(snapshot, lock, stop_event, control, config, intervalos)
 
         finally:
             detener_procesos(procesos, stop_event)
