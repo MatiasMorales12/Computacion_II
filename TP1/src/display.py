@@ -267,33 +267,213 @@ def mostrar_vista_sistema(snapshot):
     print(f"  Segundos activo: {round(uptime.get('uptime_segundos', 0), 2)}")
 
 
-def mostrar_display(snapshot, lock, vista_actual):
+def _texto_proceso(proc):
+    """
+    Convierte los datos principales de un proceso a texto para poder filtrar.
+    """
+    partes = []
+
+    if isinstance(proc, dict):
+        for valor in proc.values():
+            if isinstance(valor, (str, int, float, bool)):
+                partes.append(str(valor))
+
+    return " ".join(partes).lower()
+
+
+def _aplicar_filtro_snapshot(snapshot, control):
+    """
+    Aplica un filtro simple sobre las listas de procesos de cada vista.
+    """
+    filtro = str(control.get("filtro", "")).strip().lower() if control else ""
+
+    if not filtro:
+        return snapshot
+
+    copia = dict(snapshot)
+
+    for clave in ["resumen", "memoria", "fds", "threads", "scheduling"]:
+        entrada = snapshot.get(clave, {})
+
+        if not isinstance(entrada, dict):
+            continue
+
+        datos = entrada.get("datos", [])
+
+        if not isinstance(datos, list):
+            continue
+
+        nueva_entrada = dict(entrada)
+        nueva_entrada["datos"] = [
+            proc for proc in datos
+            if filtro in _texto_proceso(proc)
+        ]
+        copia[clave] = nueva_entrada
+
+    return copia
+
+
+def _procesos_de_vista(snapshot, vista_actual):
+    """
+    Devuelve la lista de procesos asociada a la vista activa.
+    """
+    clave_por_vista = {
+        "1": "resumen",
+        "2": "memoria",
+        "3": "fds",
+        "4": "threads",
+        "6": "scheduling",
+    }
+
+    clave = clave_por_vista.get(vista_actual)
+
+    if not clave:
+        return []
+
+    entrada = snapshot.get(clave, {})
+
+    if not isinstance(entrada, dict):
+        return []
+
+    datos = entrada.get("datos", [])
+
+    if not isinstance(datos, list):
+        return []
+
+    return datos
+
+
+def _buscar_proceso_por_pid(snapshot, pid):
+    """
+    Busca un proceso por PID dentro de las vistas con datos por proceso.
+    """
+    if pid is None:
+        return None
+
+    for clave in ["resumen", "memoria", "fds", "threads", "scheduling"]:
+        entrada = snapshot.get(clave, {})
+
+        if not isinstance(entrada, dict):
+            continue
+
+        for proc in entrada.get("datos", []):
+            if str(proc.get("pid")) == str(pid):
+                return proc
+
+    return None
+
+
+def _mostrar_datos_proceso(proc):
+    """
+    Imprime un resumen compacto del proceso seleccionado o fijado.
+    """
+    if not proc:
+        print("No hay datos del proceso seleccionado.")
+        return
+
+    pid = proc.get("pid", "-")
+    nombre = proc.get("nombre", proc.get("comando", "-"))
+    usuario = proc.get("usuario", "-")
+    estado = proc.get("estado", "-")
+    cpu = proc.get("cpu_pct", "-")
+    rss = proc.get("rss_kb", proc.get("vmrss_kb", "-"))
+    threads = proc.get("threads", proc.get("cantidad_threads", "-"))
+    fds = proc.get("cantidad_fds", "-")
+
+    print(
+        f"PID {pid} | Nombre/Comando: {str(nombre)[:45]} | "
+        f"Usuario: {usuario} | Estado: {estado}"
+    )
+    print(f"CPU%: {cpu} | RSS/VmRSS(KB): {rss} | Threads: {threads} | FDs: {fds}")
+
+
+def mostrar_panel_detalle(snapshot, vista_actual, control):
+    """
+    Muestra seleccion, filtro, ayuda y proceso fijado.
+    """
+    if control is None:
+        return
+
+    procesos = _procesos_de_vista(snapshot, vista_actual)
+
+    print()
+    print("=== PANEL DE DETALLE ===")
+
+    filtro = control.get("filtro", "")
+    modo_busqueda = control.get("modo_busqueda", False)
+    pid_pineado = control.get("pid_pineado")
+
+    print(
+        f"Filtro: {filtro or '-'} "
+        f"{'(escribiendo...)' if modo_busqueda else ''} | "
+        f"Pin: {pid_pineado or '-'}"
+    )
+
+    if procesos:
+        seleccion = int(control.get("seleccion", 0))
+        seleccion = max(0, min(seleccion, len(procesos) - 1))
+        control["seleccion"] = seleccion
+
+        seleccionado = procesos[seleccion]
+        control["pid_seleccionado"] = seleccionado.get("pid")
+
+        print(f"Seleccion visible: {seleccion + 1}/{len(procesos)}")
+        print("Proceso seleccionado:")
+        _mostrar_datos_proceso(seleccionado)
+    else:
+        control["pid_seleccionado"] = None
+        print("Esta vista no tiene procesos seleccionables o el filtro no encontro resultados.")
+
+    if pid_pineado is not None:
+        print()
+        print("Proceso fijado:")
+        _mostrar_datos_proceso(_buscar_proceso_por_pid(snapshot, pid_pineado))
+
+    if control.get("mostrar_ayuda", False):
+        print()
+        print("Ayuda:")
+        print("  1-7 o r/m/f/t/s/p/g : cambiar de vista")
+        print("  arriba/abajo        : mover seleccion")
+        print("  Enter               : fijar/desfijar PID seleccionado")
+        print("  /                   : buscar/filtrar por texto")
+        print("  + / -               : acelerar/desacelerar analizador activo")
+        print("  u                   : marcar actualizacion manual")
+        print("  c                   : limpiar filtro, seleccion y pin")
+        print("  h o ?               : mostrar/ocultar ayuda")
+        print("  q                   : salir")
+
+
+def mostrar_display(snapshot, lock, vista_actual, control=None):
     """
     Muestra la vista seleccionada.
     """
     with lock:
         copia = dict(snapshot)
 
+    copia_filtrada = _aplicar_filtro_snapshot(copia, control or {})
+
     limpiar_pantalla()
     mostrar_cabecera(vista_actual)
     mostrar_estado_analizadores(copia)
 
     if vista_actual == "1":
-        mostrar_vista_resumen(copia)
+        mostrar_vista_resumen(copia_filtrada)
     elif vista_actual == "2":
-        mostrar_vista_memoria(copia)
+        mostrar_vista_memoria(copia_filtrada)
     elif vista_actual == "3":
-        mostrar_vista_fds(copia)
+        mostrar_vista_fds(copia_filtrada)
     elif vista_actual == "4":
-        mostrar_vista_threads(copia)
+        mostrar_vista_threads(copia_filtrada)
     elif vista_actual == "5":
-        mostrar_vista_senales(copia)
+        mostrar_vista_senales(copia_filtrada)
     elif vista_actual == "6":
-        mostrar_vista_scheduling(copia)
+        mostrar_vista_scheduling(copia_filtrada)
     elif vista_actual == "7":
-        mostrar_vista_sistema(copia)
+        mostrar_vista_sistema(copia_filtrada)
     else:
         print("Vista desconocida.")
+
+    mostrar_panel_detalle(copia_filtrada, vista_actual, control)
 
     print()
     print(f"Actualizado: {time.strftime('%H:%M:%S')}")

@@ -155,16 +155,42 @@ def detener_procesos(procesos, stop_event):
 def leer_tecla_no_bloqueante():
     """
     Lee una tecla sin frenar el programa.
+
+    Tambien interpreta teclas especiales:
+    - flecha arriba
+    - flecha abajo
+    - Enter
+    - Escape
     """
     if not sys.stdin.isatty():
         return None
 
     disponibles, _, _ = select.select([sys.stdin], [], [], 0)
 
-    if disponibles:
-        return sys.stdin.read(1)
+    if not disponibles:
+        return None
 
-    return None
+    tecla = sys.stdin.read(1)
+
+    if tecla == "\x1b":
+        secuencia = ""
+
+        for _ in range(2):
+            disponibles, _, _ = select.select([sys.stdin], [], [], 0.01)
+            if disponibles:
+                secuencia += sys.stdin.read(1)
+
+        if secuencia == "[A":
+            return "UP"
+        if secuencia == "[B":
+            return "DOWN"
+
+        return "ESC"
+
+    if tecla in ["\n", "\r"]:
+        return "ENTER"
+
+    return tecla
 
 
 def mostrar_estado_senales(control):
@@ -186,7 +212,8 @@ def mostrar_estado_senales(control):
     print(f"Analizador activo: {control.get('analizador_actual', '-')}")
     print(f"Intervalo activo: {control.get('intervalo_actual', '-')} s")
     print()
-    print("Teclas: 1-7 cambiar vista | + acelerar | - desacelerar | q salir")
+    print("Teclas: 1-7 o r/m/f/t/s/p/g cambiar vista | + acelerar | - desacelerar | q salir")
+    print("Extras: ↑/↓ seleccion | Enter pin | / filtro | u actualizar | c limpiar | h/? ayuda")
     print("Señales: SIGINT/SIGTERM salir | SIGHUP recargar | SIGUSR1 dump | SIGUSR2 verbose | SIGWINCH repintar")
 
 
@@ -217,8 +244,83 @@ def ejecutar_monitor(snapshot, lock, stop_event, control, config, intervalos):
 
             tecla = leer_tecla_no_bloqueante()
 
-            if tecla in ["1", "2", "3", "4", "5", "6", "7"]:
+            vista_por_letra = {
+                "r": "1",
+                "m": "2",
+                "f": "3",
+                "t": "4",
+                "s": "5",
+                "p": "6",
+                "g": "7",
+            }
+
+            if control.get("modo_busqueda"):
+                if tecla == "ENTER":
+                    control["modo_busqueda"] = False
+                    control["seleccion"] = 0
+                    control["mensaje"] = f"Filtro aplicado: {control.get('filtro', '') or '(sin filtro)'}"
+
+                elif tecla == "ESC":
+                    control["modo_busqueda"] = False
+                    control["filtro"] = ""
+                    control["seleccion"] = 0
+                    control["mensaje"] = "Busqueda cancelada"
+
+                elif tecla in ["\x7f", "\b"]:
+                    control["filtro"] = control.get("filtro", "")[:-1]
+                    control["seleccion"] = 0
+
+                elif tecla is not None and len(tecla) == 1 and tecla.isprintable():
+                    control["filtro"] = control.get("filtro", "") + tecla
+                    control["seleccion"] = 0
+
+            elif tecla in ["1", "2", "3", "4", "5", "6", "7"]:
                 vista_actual = tecla
+                control["seleccion"] = 0
+                control["mensaje"] = f"Vista cambiada a {NOMBRE_VISTA.get(vista_actual, vista_actual)}"
+
+            elif tecla is not None and tecla.lower() in vista_por_letra:
+                vista_actual = vista_por_letra[tecla.lower()]
+                control["seleccion"] = 0
+                control["mensaje"] = f"Vista cambiada a {NOMBRE_VISTA.get(vista_actual, vista_actual)}"
+
+            elif tecla == "UP":
+                control["seleccion"] = max(0, int(control.get("seleccion", 0)) - 1)
+
+            elif tecla == "DOWN":
+                control["seleccion"] = int(control.get("seleccion", 0)) + 1
+
+            elif tecla == "ENTER":
+                pid = control.get("pid_seleccionado")
+
+                if pid is None:
+                    control["mensaje"] = "No hay proceso seleccionado para fijar"
+                elif control.get("pid_pineado") == pid:
+                    control["pid_pineado"] = None
+                    control["mensaje"] = f"PID {pid} desfijado"
+                else:
+                    control["pid_pineado"] = pid
+                    control["mensaje"] = f"PID {pid} fijado en panel de detalle"
+
+            elif tecla == "/":
+                control["modo_busqueda"] = True
+                control["filtro"] = ""
+                control["seleccion"] = 0
+                control["mensaje"] = "Modo busqueda activo"
+
+            elif tecla in ["u", "U"]:
+                control["mensaje"] = "Actualizacion manual solicitada"
+
+            elif tecla in ["c", "C"]:
+                control["filtro"] = ""
+                control["pid_pineado"] = None
+                control["pid_seleccionado"] = None
+                control["seleccion"] = 0
+                control["mensaje"] = "Filtro, seleccion y pin limpiados"
+
+            elif tecla in ["h", "H", "?"]:
+                control["mostrar_ayuda"] = not control.get("mostrar_ayuda", False)
+                control["mensaje"] = "Ayuda visible" if control["mostrar_ayuda"] else "Ayuda oculta"
 
             elif tecla in ["+", "="]:
                 clave, nuevo = ajustar_intervalo_vista(intervalos, vista_actual, -0.2)
@@ -235,7 +337,7 @@ def ejecutar_monitor(snapshot, lock, stop_event, control, config, intervalos):
             elif tecla in ["q", "Q"]:
                 break
 
-            mostrar_display(snapshot, lock, vista_actual)
+            mostrar_display(snapshot, lock, vista_actual, control)
             mostrar_estado_senales(control)
 
             time.sleep(float(config.get("refresh_interval", 0.5)))
@@ -269,6 +371,12 @@ def main():
             "recargar_config": False,
             "verbose": False,
             "repintar": False,
+            "seleccion": 0,
+            "pid_seleccionado": None,
+            "pid_pineado": None,
+            "filtro": "",
+            "modo_busqueda": False,
+            "mostrar_ayuda": False,
         }
 
         intervalos = crear_intervalos_compartidos(config)
