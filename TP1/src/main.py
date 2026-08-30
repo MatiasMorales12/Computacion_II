@@ -96,37 +96,37 @@ def iniciar_procesos(snapshot, lock, stop_event, config, intervalos):
     procesos = [
         mp.Process(
             target=analizador_resumen,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["resumen"]),
             name="analizador_resumen",
         ),
         mp.Process(
             target=analizador_memoria,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["memoria"]),
             name="analizador_memoria",
         ),
         mp.Process(
             target=analizador_fds,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["fds"]),
             name="analizador_fds",
         ),
         mp.Process(
             target=analizador_threads,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["threads"]),
             name="analizador_threads",
         ),
         mp.Process(
             target=analizador_senales,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["senales"]),
             name="analizador_senales",
         ),
         mp.Process(
             target=analizador_scheduling,
-            args=(snapshot, lock, stop_event, config, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["scheduling"]),
             name="analizador_scheduling",
         ),
         mp.Process(
             target=analizador_sistema,
-            args=(snapshot, lock, stop_event, 2.0),
+            args=(snapshot, lock, stop_event, config, intervalos["sistema"]),
             name="analizador_sistema",
         ),
     ]
@@ -186,7 +186,7 @@ def mostrar_estado_senales(control):
     print(f"Analizador activo: {control.get('analizador_actual', '-')}")
     print(f"Intervalo activo: {control.get('intervalo_actual', '-')} s")
     print()
-    print("Teclas: 1-7 cambiar vista | q salir")
+    print("Teclas: 1-7 cambiar vista | + acelerar | - desacelerar | q salir")
     print("Señales: SIGINT/SIGTERM salir | SIGHUP recargar | SIGUSR1 dump | SIGUSR2 verbose | SIGWINCH repintar")
 
 
@@ -219,6 +219,18 @@ def ejecutar_monitor(snapshot, lock, stop_event, control, config, intervalos):
 
             if tecla in ["1", "2", "3", "4", "5", "6", "7"]:
                 vista_actual = tecla
+
+            elif tecla in ["+", "="]:
+                clave, nuevo = ajustar_intervalo_vista(intervalos, vista_actual, -0.2)
+                control["analizador_actual"] = clave
+                control["intervalo_actual"] = nuevo
+                control["mensaje"] = f"Intervalo de {clave} ajustado a {nuevo} s"
+
+            elif tecla in ["-", "_"]:
+                clave, nuevo = ajustar_intervalo_vista(intervalos, vista_actual, 0.2)
+                control["analizador_actual"] = clave
+                control["intervalo_actual"] = nuevo
+                control["mensaje"] = f"Intervalo de {clave} ajustado a {nuevo} s"
 
             elif tecla in ["q", "Q"]:
                 break

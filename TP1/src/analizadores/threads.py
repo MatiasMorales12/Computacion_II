@@ -1,3 +1,16 @@
+def leer_intervalo_compartido(intervalo, valor_por_defecto=2.0):
+    """
+    Lee un intervalo que puede venir como float o como multiprocessing.Value.
+    """
+    try:
+        with intervalo.get_lock():
+            return float(intervalo.value)
+    except AttributeError:
+        return float(intervalo)
+    except (TypeError, ValueError):
+        return valor_por_defecto
+
+
 import time
 
 from procfs import listar_threads
@@ -22,4 +35,4 @@ def analizador_threads(snapshot, lock, stop_event, config, intervalo=2.0):
                 "datos": datos,
             }
 
-        stop_event.wait(intervalo)
+        stop_event.wait(leer_intervalo_compartido(intervalo))
