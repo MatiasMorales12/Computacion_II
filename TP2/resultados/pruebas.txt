@@ -1,0 +1,53 @@
+Validación realizada el 03/11/2026 en Docker (Python 3.12.16).
+
+Comando:
+docker compose run --rm api python -m pytest -q
+
+Salida:
+.................                                                        [100%]
+17 passed in 3.24s
+
+Imagen construida previamente con:
+docker compose up --build -d
+
+Verificación adicional con sockets reales:
+docker compose exec -T api python -m scripts.verificar_http
+
+Resultado: OK
+GET /tareas durante CPU: 0.013174360999983037 segundos.
+Estadísticas finales de esta comprobación:
+total=8; pendiente=0; ejecutando=0; completada=1; fallida=1; cancelada=6.
+workers_configurados=4; workers_vivos=4; workers_ocupados=0.
+reinicios_workers=0; entradas_cola=0; aceptando=true.
+
+Comprobación desde Ubuntu (fuera del contenedor):
+curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8000/estadisticas
+Resultado: HTTP 200, total=8, workers_vivos=4, workers_ocupados=0.
+
+Revisión local:
+git diff --check: sin errores.
+git diff --exit-code -- TP1: sin diferencias.
+python3 -m compileall -q TP2/app TP2/scripts TP2/tests: sin errores.
+
+Las tres mediciones, con todas sus muestras, se guardan en mediciones.json.
+La primera ejecución de las mediciones falló al escribir por permisos del
+directorio de salida. Se corrigió el propietario y se repitió completamente;
+mediciones.json corresponde exclusivamente a la ejecución exitosa.
+
+Verificación de ciclo de vida de Compose:
+docker compose stop
+docker compose up -d
+docker compose logs --no-color --tail 60 api
+docker compose ps
+
+Resultado: servicio detenido y reiniciado correctamente, puerto publicado
+127.0.0.1:8000->8000/tcp. Los logs registraron el volcado del cierre:
+2026-11-03 19:01:31,489 INFO app.gestor: Estado exportado:
+/tp2/datos/estado_20261103T190131_488792Z.json
+
+El JSON fue leído y validado desde Ubuntu: contiene las ocho tareas de la
+comprobación HTTP, todas terminales, sin workers ocupados ni vivos al exportar.
+La detección de archivos anteriores también se observó durante el arranque:
+2026-11-03 18:59:35,889 INFO app.gestor:
+Volcado anterior detectado (no se restaura):
+/tp2/datos/estado_20261103T185934_829149Z.json

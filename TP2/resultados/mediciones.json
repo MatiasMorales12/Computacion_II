@@ -1,0 +1,238 @@
+{
+  "fecha_utc": "2026-11-03T18:56:18.318601+00:00",
+  "python": "3.12.16 (main, Oct 28 2026, 02:01:20) [GCC 14.2.0]",
+  "plataforma": "Linux-7.0.0-38-generic-x86_64-with-glibc2.41",
+  "cpus_logicas": 12,
+  "repeticiones": 3,
+  "io": {
+    "urls": 20,
+    "retardo_servidor_s": 0.1,
+    "bytes_por_url": 16384,
+    "series": [
+      {
+        "secuencial_s": 2.0541331960002935,
+        "concurrente_s": 0.15053533399986918,
+        "speedup": 13.64552189456117
+      },
+      {
+        "secuencial_s": 2.0765210710005704,
+        "concurrente_s": 0.15626775500004442,
+        "speedup": 13.288224886829532
+      },
+      {
+        "secuencial_s": 2.0852291789997253,
+        "concurrente_s": 0.15341716400052974,
+        "speedup": 13.591889750957234
+      }
+    ],
+    "secuencial_mediana_s": 2.0765210710005704,
+    "concurrente_mediana_s": 0.15341716400052974,
+    "speedup_mediana": 13.591889750957234
+  },
+  "cpu": {
+    "bloqueante": {
+      "series": [
+        {
+          "get_tareas_s": 1.1492521829995894,
+          "calculo_s": 1.1997262390004835
+        },
+        {
+          "get_tareas_s": 1.173900169999797,
+          "calculo_s": 1.224276008999368
+        },
+        {
+          "get_tareas_s": 1.1721792450007342,
+          "calculo_s": 1.2225601089994598
+        }
+      ],
+      "get_mediana_s": 1.1721792450007342
+    },
+    "executor": {
+      "series": [
+        {
+          "get_tareas_s": 0.011771280000175466,
+          "calculo_s": 1.2733757930000138
+        },
+        {
+          "get_tareas_s": 0.021890263000386767,
+          "calculo_s": 1.314520327999162
+        },
+        {
+          "get_tareas_s": 0.02231623900024715,
+          "calculo_s": 1.324941146999663
+        }
+      ],
+      "get_mediana_s": 0.021890263000386767
+    },
+    "iteraciones": 3000000,
+    "retardo_tras_marcador_s": 0.05
+  },
+  "pool": {
+    "workers": 4,
+    "espera_por_tarea_s": 0.2,
+    "filas": [
+      {
+        "cantidad": 1,
+        "series": [
+          {
+            "lote_s": 0.21489840799949889,
+            "tareas_por_s": 4.653361601461151,
+            "latencia_media_s": 0.201399,
+            "espera_cola_media_s": 0.000167
+          },
+          {
+            "lote_s": 0.21312523000051442,
+            "tareas_por_s": 4.692077047835145,
+            "latencia_media_s": 0.200836,
+            "espera_cola_media_s": 0.000538
+          },
+          {
+            "lote_s": 0.21615437600030418,
+            "tareas_por_s": 4.62632317931233,
+            "latencia_media_s": 0.201184,
+            "espera_cola_media_s": 0.000483
+          }
+        ],
+        "lote_mediana_s": 0.21489840799949889,
+        "tareas_por_s_mediana": 4.653361601461151,
+        "latencia_media_mediana_s": 0.201184,
+        "espera_cola_media_mediana_s": 0.000483
+      },
+      {
+        "cantidad": 2,
+        "series": [
+          {
+            "lote_s": 0.21352542900058324,
+            "tareas_por_s": 9.366565890353682,
+            "latencia_media_s": 0.2015945,
+            "espera_cola_media_s": 0.00048150000000000005
+          },
+          {
+            "lote_s": 0.21666874899983668,
+            "tareas_por_s": 9.230680516835898,
+            "latencia_media_s": 0.2035855,
+            "espera_cola_media_s": 0.0001305
+          },
+          {
+            "lote_s": 0.21745815200029028,
+            "tareas_por_s": 9.19717187699328,
+            "latencia_media_s": 0.201812,
+            "espera_cola_media_s": 0.0003905
+          }
+        ],
+        "lote_mediana_s": 0.21666874899983668,
+        "tareas_por_s_mediana": 9.230680516835898,
+        "latencia_media_mediana_s": 0.201812,
+        "espera_cola_media_mediana_s": 0.0003905
+      },
+      {
+        "cantidad": 4,
+        "series": [
+          {
+            "lote_s": 0.22411690000080853,
+            "tareas_por_s": 17.84782852156874,
+            "latencia_media_s": 0.20111725,
+            "espera_cola_media_s": 0.00032175
+          },
+          {
+            "lote_s": 0.22501773699968908,
+            "tareas_por_s": 17.77637644629555,
+            "latencia_media_s": 0.20188425,
+            "espera_cola_media_s": 0.00031800000000000003
+          },
+          {
+            "lote_s": 0.21931675399991946,
+            "tareas_por_s": 18.238460706022803,
+            "latencia_media_s": 0.2010075,
+            "espera_cola_media_s": 0.00033575
+          }
+        ],
+        "lote_mediana_s": 0.22411690000080853,
+        "tareas_por_s_mediana": 17.84782852156874,
+        "latencia_media_mediana_s": 0.20111725,
+        "espera_cola_media_mediana_s": 0.00032175
+      },
+      {
+        "cantidad": 8,
+        "series": [
+          {
+            "lote_s": 0.42574786200020753,
+            "tareas_por_s": 18.790464295968913,
+            "latencia_media_s": 0.299578625,
+            "espera_cola_media_s": 0.0985815
+          },
+          {
+            "lote_s": 0.4173377809993326,
+            "tareas_por_s": 19.16912478147478,
+            "latencia_media_s": 0.29998625,
+            "espera_cola_media_s": 0.0989565
+          },
+          {
+            "lote_s": 0.4312822709998727,
+            "tareas_por_s": 18.549336566636565,
+            "latencia_media_s": 0.30054875,
+            "espera_cola_media_s": 0.09920475
+          }
+        ],
+        "lote_mediana_s": 0.42574786200020753,
+        "tareas_por_s_mediana": 18.790464295968913,
+        "latencia_media_mediana_s": 0.29998625,
+        "espera_cola_media_mediana_s": 0.0989565
+      },
+      {
+        "cantidad": 16,
+        "series": [
+          {
+            "lote_s": 0.8301957520006908,
+            "tareas_por_s": 19.272563080986092,
+            "latencia_media_s": 0.4988908125,
+            "espera_cola_media_s": 0.29741575
+          },
+          {
+            "lote_s": 0.8236299390000568,
+            "tareas_por_s": 19.426200095913337,
+            "latencia_media_s": 0.4962904375,
+            "espera_cola_media_s": 0.295384
+          },
+          {
+            "lote_s": 0.8364244559998042,
+            "tareas_por_s": 19.129043735186702,
+            "latencia_media_s": 0.49682550000000003,
+            "espera_cola_media_s": 0.295576
+          }
+        ],
+        "lote_mediana_s": 0.8301957520006908,
+        "tareas_por_s_mediana": 19.272563080986092,
+        "latencia_media_mediana_s": 0.49682550000000003,
+        "espera_cola_media_mediana_s": 0.295576
+      },
+      {
+        "cantidad": 32,
+        "series": [
+          {
+            "lote_s": 1.6492028079992451,
+            "tareas_por_s": 19.4033140404492,
+            "latencia_media_s": 0.8985598125,
+            "espera_cola_media_s": 0.69608034375
+          },
+          {
+            "lote_s": 1.664474106999478,
+            "tareas_por_s": 19.225291559317743,
+            "latencia_media_s": 0.901343375,
+            "espera_cola_media_s": 0.697945875
+          },
+          {
+            "lote_s": 1.6512663979992794,
+            "tareas_por_s": 19.37906569089766,
+            "latencia_media_s": 0.90247103125,
+            "espera_cola_media_s": 0.6993706875
+          }
+        ],
+        "lote_mediana_s": 1.6512663979992794,
+        "tareas_por_s_mediana": 19.37906569089766,
+        "latencia_media_mediana_s": 0.901343375,
+        "espera_cola_media_mediana_s": 0.697945875
+      }
+    ]
+  }
+}
