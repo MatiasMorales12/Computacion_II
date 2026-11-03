@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      WORKERS: ${WORKERS:-4}
+      HILOS_CPU: ${HILOS_CPU:-2}
+      CAPACIDAD_COLA: ${CAPACIDAD_COLA:-1000}
+      PLAZO_APAGADO: ${PLAZO_APAGADO:-5}
+      DIRECTORIO_ESTADO: /tp2/datos
+    volumes:
+      - ./datos:/tp2/datos
+    stop_grace_period: 20s
+    init: true
